@@ -30,5 +30,3 @@ services:
     ports:
       - 8099:8099
     restart: always
-volumes:
-  pgdata:
