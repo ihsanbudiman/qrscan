@@ -1,0 +1,28 @@
+version: "3.9"
+services:
+  centrifugo:
+    container_name: centrifugo
+    image: centrifugo/centrifugo:v5
+    volumes:
+      - ./centrifugo.json:/centrifugo/config.json
+    command: centrifugo -c config.json
+    ports:
+      - 8091:8000
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    restart: always
+  postgres:
+    image: postgres:14-alpine
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=ihsan
+      - POSTGRES_USER=ihsan
+      - POSTGRES_DB=qrscan
+    restart: always
+volumes:
+  pgdata:
