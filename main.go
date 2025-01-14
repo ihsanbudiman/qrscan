@@ -22,6 +22,7 @@ import (
 
 var jwtSecret = []byte("secret")
 var dbConn *gorm.DB
+var cent *gocent.Client
 
 func main() {
 	err := godotenv.Load()
@@ -35,7 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cent := gocent.New(gocent.Config{
+	cent = gocent.New(gocent.Config{
 		Addr: "http://116.193.190.203:8091/api",
 		Key:  "ba3a0cc4-3093-4d9a-aa0f-9f45f5728905",
 	})
@@ -76,6 +77,21 @@ func main() {
 		r.Use(JwtMiddleware)
 
 		r.Post("/scan-qr", scanQr)
+	})
+
+	r.Post("/test", func(w http.ResponseWriter, r *http.Request) {
+		type Test struct {
+			ChannelName string `json:"channel_name"`
+		}
+
+		req := Test{}
+
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 	})
 
 	fmt.Println()
@@ -224,17 +240,14 @@ func login(w http.ResponseWriter, r *http.Request) {
 type GenerateQrResponse struct {
 	Uuid           string `json:"uuid"`
 	WebsocketToken string `json:"websocket_token"`
+	ChannelName    string `json:"channel_name"`
 }
 
 func generateQr(w http.ResponseWriter, r *http.Request) {
 	// Generate a UUID
 	tempUuid := uuid.New().String()
 
-	// Generate a WebSocket token
-	tempToken := uuid.New().String()
-
 	qrscan := Qrscan{
-		Id:         0,
 		Uuid:       tempUuid,
 		UserId:     null.Int64{},
 		IsValid:    false,
@@ -251,10 +264,13 @@ func generateQr(w http.ResponseWriter, r *http.Request) {
 	// Log or use the user (just for demonstration)
 	fmt.Printf("Created user: %+v\n", qrscan)
 
+	token := GenerateJWTForWebsocket(fmt.Sprintf("public:%v", qrscan.Id))
+
 	// Create a response
 	response := GenerateQrResponse{
 		Uuid:           tempUuid,
-		WebsocketToken: tempToken,
+		WebsocketToken: token,
+		ChannelName:    fmt.Sprintf("public:%v", qrscan.Id),
 	}
 
 	// Encode the response as JSON
@@ -314,6 +330,13 @@ func scanQr(w http.ResponseWriter, r *http.Request) {
 
 	// Log or use the user (just for demonstration)
 	fmt.Printf("Found user: %+v\n", user)
+	channelName := fmt.Sprintf("public:%v", qrscan.Id)
+
+	err = cent.Publish(ctx, channelName, []byte(`{"event": "qrscan"}`))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// Create a response
 	response := map[string]string{

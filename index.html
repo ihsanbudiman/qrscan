@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+<script src="https://unpkg.com/centrifuge@5.0.0/dist/centrifuge.js"></script>
+</head>
+<body>
+  
+</body>
+<script>
+  const token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzY5NTM2MzAsInN1YiI6InB1YmxpYzozMiJ9.no4FScxnCZECNGBTRopDf2ZMGbQGr8ZBGW7RtbW-Db4`
+  
+    // Use WebSocket transport endpoint.
+  const centrifuge = new Centrifuge('ws://116.193.190.203:8091/connection/websocket', {
+    token: token
+  });
+
+  centrifuge
+  .on('connecting', function (ctx) {
+    console.log(`Connecting to WebSocket`, ctx)
+  })
+  .on('connected', function (ctx) {
+    console.log(`Connected to WebSocket`, ctx)
+
+    const sub = centrifuge.newSubscription("public:32")
+    sub
+      .on('publication', function (ctx) {
+        console.log('Received publish', ctx)
+      })
+      .on('subscribing', function (ctx) {
+        console.log(`Subscribing to channel`, ctx)
+      })
+      .on('subscribed', function (ctx) {
+        console.log('Subscribed to channel', ctx)
+      })
+      .on('unsubscribed', function (ctx) {
+        console.log(`Unsubscribed from channel`, ctx)
+      })
+      .on('error', function (ctx) {
+        console.log(`error`, ctx)
+      })
+      .subscribe()
+  })
+  .on('disconnected', function (ctx) {
+    console.log(`Disconnected from WebSocket`, ctx)
+  })
+
+
+
+  centrifuge.connect()
+</script>
+</html>
